@@ -162,11 +162,11 @@ class ParticleFilter:
                      new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
 
             r = math.sqrt(delta[0]**2 + delta[1]**2)
-            phi = math.atan2(delta[1], delta[2])
+            phi = math.atan2(delta[1], delta[0])
             
             for particle in self.particle_cloud:
-                particle.x += r*math.cos(phi + particle.theta)
-                particle.y += r*math.sin(phi + particle.theta)
+                particle.x += r*math.cos(phi)
+                particle.y += r*math.sin(phi)
                 particle.theta += delta[2]
 
             self.current_odom_xy_theta = new_odom_xy_theta
@@ -190,7 +190,10 @@ class ParticleFilter:
         """
         # make sure the distribution is normalized
         self.normalize_particles()
+        probs = [p.w for p in self.particle_cloud]
+        self.particle_cloud = draw_random_sample(self.particle_cloud, probs, self.n_particles)
         # TODO: fill out the rest of the implementation
+
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
