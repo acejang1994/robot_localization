@@ -133,7 +133,17 @@ class ParticleFilter:
 
         # TODO: assign the lastest pose into self.robot_pose as a geometry_msgs.Pose object
         # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose()
+
+        x_sum = 0
+        y_sum = 0
+        theta_sum = 0
+
+        for particle in self.particle_cloud:
+            x_sum += particle.x * particle.w
+            y_sum += particle.y * particle.w
+            theta_sum += particle.theta * particle.w
+
+        self.robot_pose = Particle(x=x_sum, y=y_sum, theta=theta_sum).as_pose()
 
     def update_particles_with_odom(self, msg):
         """ Update the particles using the newly given odometry pose.
@@ -150,6 +160,14 @@ class ParticleFilter:
             delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
                      new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
                      new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
+
+            r = math.sqrt(delta[0]**2 + delta[1]**2)
+            phi = math.atan2(delta[1], delta[2])
+            
+            for particle in self.particle_cloud:
+                particle.x += r*math.cos(phi + particle.theta)
+                particle.y += r*math.sin(phi + particle.theta)
+                particle.theta += delta[2]
 
             self.current_odom_xy_theta = new_odom_xy_theta
         else:
@@ -222,12 +240,22 @@ class ParticleFilter:
         self.particle_cloud = []
         # TODO create particles
 
+        sig = 0.1
+        for i in range(self.n_particles):
+            p = Particle(gauss(xy_theta[0], sig), gauss(xy_theta[1], sig), gauss(xy_theta[2], sig))
+            self.particle_cloud.append(p)
+
         self.normalize_particles()
         self.update_robot_pose()
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        pass
+        
+        w_sum = 0
+        for particle in self.particle_cloud:
+            w_sum += particle.w
+        for particle in self.particle_cloud:
+            particle.w /= w_sum
         # TODO: implement this
 
     def publish_particles(self, msg):
