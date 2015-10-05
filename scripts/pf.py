@@ -117,9 +117,14 @@ class ParticleFilter:
         # request the map from the map server, the map should be of type nav_msgs/OccupancyGrid
         # TODO: fill in the appropriate service call here.  The resultant map should be assigned be passed
         #       into the init method for OccupancyField
-
+        rospy.wait_for_service('static_map')
+        maps = rospy.ServiceProxy('static_map', GetMap)
+        try:
+            map = maps()
+        except rospy.ServiceException as exc:
+            print("service did not process request: "+ str(exc))
         # for now we have commented out the occupancy field initialization until you can successfully fetch the map
-        #self.occupancy_field = OccupancyField(map)
+        self.occupancy_field = OccupancyField(map)
         self.initialized = True
 
     def update_robot_pose(self):
@@ -162,11 +167,11 @@ class ParticleFilter:
                      new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
 
             r = math.sqrt(delta[0]**2 + delta[1]**2)
-            phi = math.atan2(delta[1], delta[0])
+            phi = math.atan2(delta[1], delta[0])-old_odom_xy_theta[2]
             
             for particle in self.particle_cloud:
-                particle.x += r*math.cos(phi)
-                particle.y += r*math.sin(phi)
+                particle.x += r*math.cos(phi+particle.theta)
+                particle.y += r*math.sin(phi+particle.theta)
                 particle.theta += delta[2]
 
             self.current_odom_xy_theta = new_odom_xy_theta
@@ -197,8 +202,19 @@ class ParticleFilter:
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-        # TODO: implement this
-        pass
+
+        laserdata = msg.ranges[0]
+        # for i in len(360):
+        #     laserdata = msg.ranges[i]
+        for part in self.particle_cloud:
+            dist = self.occupancy_field.get_closest_obstacle_distance(part.x,part.y) 
+            if dist is float('nan'):
+                part.w = 0 
+            else: 
+                part.w = 1/((laserdata-dist)+1)^2
+
+
+        # pass
 
     @staticmethod
     def weighted_values(values, probabilities, size):
