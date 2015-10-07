@@ -95,6 +95,7 @@ class ParticleFilter:
         self.laser_max_distance = 2.0   # maximum penalty to assess in the likelihood field model
 
         # TODO: define additional constants if needed
+        self.sigma = 0.05  # laser error
 
         # Setup pubs and subs
 
@@ -118,12 +119,13 @@ class ParticleFilter:
         # TODO: fill in the appropriate service call here.  The resultant map should be assigned be passed
         #       into the init method for OccupancyField
         rospy.wait_for_service('static_map')
-        maps = rospy.ServiceProxy('static_map', GetMap)
+        
         try:
-            map = maps()
+            maps = rospy.ServiceProxy('static_map', GetMap)    
         except rospy.ServiceException as exc:
             print("service did not process request: "+ str(exc))
         # for now we have commented out the occupancy field initialization until you can successfully fetch the map
+        map = maps().map
         self.occupancy_field = OccupancyField(map)
         self.initialized = True
 
@@ -196,7 +198,7 @@ class ParticleFilter:
         # make sure the distribution is normalized
         self.normalize_particles()
         probs = [p.w for p in self.particle_cloud]
-        self.particle_cloud = draw_random_sample(self.particle_cloud, probs, self.n_particles)
+        self.particle_cloud = self.draw_random_sample(self.particle_cloud, probs, self.n_particles)
         # TODO: fill out the rest of the implementation
 
 
@@ -204,16 +206,17 @@ class ParticleFilter:
         """ Updates the particle weights in response to the scan contained in the msg """
 
         laserdata = msg.ranges[0]
-        # for i in len(360):
-        #     laserdata = msg.ranges[i]
+
         for part in self.particle_cloud:
-            dist = self.occupancy_field.get_closest_obstacle_distance(part.x,part.y) 
-            if dist is float('nan'):
-                part.w = 0 
-            else: 
-                part.w = 1/((laserdata-dist)+1)^2
+            for i in range(360):
+                d = msg.ranges[i]
+                new_x = d * math.cos(i + part.theta)
+                new_y = d * math.sin(i + part.theta)
+                err = self.occupancy_field.get_closest_obstacle_distance(new_x, new_y)
+                if err is not float('nan'):
+                    part.w += math.exp(-err*err/(2*self.sigma**2))
 
-
+        self.normalize_particles()
         # pass
 
     @staticmethod
@@ -259,7 +262,7 @@ class ParticleFilter:
         self.particle_cloud = []
         # TODO create particles
 
-        sig = 0.1
+        sig = 0.2
         for i in range(self.n_particles):
             p = Particle(gauss(xy_theta[0], sig), gauss(xy_theta[1], sig), gauss(xy_theta[2], sig))
             self.particle_cloud.append(p)
