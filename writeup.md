@@ -9,6 +9,6 @@ We used the robot’s lidar data to update the particle weights. If the robot’
 ## What if any challenges did you face along the way?
 Updating the position of the particles based on the odom coordinate system. Calculating the new position and angle with respect to the world took as some time to figure out with math on the board. 
 ## What would you do to improve your project if you had more time?
-If we had more time we would wish to improve the project by making the filter more robust, since the particle cloud was sometimes fuzzy. 
+If we had more time we would wish to improve the project by making the filter more robust, since the particle cloud was sometimes fuzzy. Also possibly adding a feature to reset the particle filters once the filters get lost would have been more helpful. Once the particles “lose” the robot’s location, it is hard to recover.
 ## Did you learn any interesting lessons for future robotic programming projects? These could relate to working on robotics projects in teams, working on more open-ended (and longer term) problems, or any other relevant topic.
 We found using the particle filter and the math behind it very interesting. Particle filters are very well known and sometimes being at Olin, we don’t get many chance to deal with theoretical methods. It was great using the filter for a lab and understanding it thoroughly. 
